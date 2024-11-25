@@ -53,3 +53,5 @@ rsconnect/
 src/*.o
 src/*.so
 src/cgeneric.h
+
+inst/shared/*.so
