@@ -265,10 +265,7 @@ build_Q_cgeneric <- function(Q, graph) {
     dims = c(n, n),
     symmetric = TRUE  # Assuming Q is symmetric
   )
-  
-  # Return the full dense matrix (or keep it sparse as needed)
-  Q_full <- as.matrix(Q_sparse)
-  return(Q_full)
+  return(Q_sparse)
 }
 
 #' @useDynLib inla_cgeneric_debugger, .registration = TRUE
