@@ -4,14 +4,16 @@
 \alias{call_dynamic_cgeneric_model}
 \title{Call Dynamic CGeneric Model}
 \usage{
-call_dynamic_cgeneric_model(model, cmd, theta)
+call_dynamic_cgeneric_model(model, cmd, theta, verbose = FALSE)
 }
 \arguments{
-\item{model}{A model list containing `f$cgeneric` with `shlib`, `model`, and `data`.}
+\item{model}{A model obtained as result of `INLA::inla.cgeneric.define()`.}
 
-\item{cmd}{Command string specifying the operation (`"void"`, `"Q"`, etc.).}
+\item{cmd}{Command string specifying the operation (`"graph"`, `"Q"`, etc.).}
 
 \item{theta}{Numeric vector of parameters for the CGeneric model.}
+
+\item{verbose}{Logical indicating whether to enable verbose output (default is `FALSE`). If TRUE, the data passed to C will be printed to the console.}
 }
 \value{
 Result of the dynamic function call.

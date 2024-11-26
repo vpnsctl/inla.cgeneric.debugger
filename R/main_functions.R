@@ -77,16 +77,16 @@ prepare_cgeneric_data <- function(data) {
 
   return(data)
 }
-
 #' Call Dynamic CGeneric Model
 #' 
 #' @description Dynamically calls a CGeneric model's shared library.
-#' @param model A model list containing `f$cgeneric` with `shlib`, `model`, and `data`.
-#' @param cmd Command string specifying the operation (`"void"`, `"Q"`, etc.).
+#' @param model A model obtained as result of `INLA::inla.cgeneric.define()`.
+#' @param cmd Command string specifying the operation (`"graph"`, `"Q"`, etc.).
 #' @param theta Numeric vector of parameters for the CGeneric model.
+#' @param verbose Logical indicating whether to enable verbose output (default is `FALSE`). If TRUE, the data passed to C will be printed to the console.
 #' @return Result of the dynamic function call.
 #' @export
-call_dynamic_cgeneric_model <- function(model, cmd, theta) {
+call_dynamic_cgeneric_model <- function(model, cmd, theta, verbose = FALSE) {
   # Validate model structure
   if (!is.list(model) || is.null(model$f) || is.null(model$f$cgeneric)) {
     stop("The model must be a list containing an $f$cgeneric structure.")
@@ -120,29 +120,33 @@ call_dynamic_cgeneric_model <- function(model, cmd, theta) {
     stop("The 'theta' argument must be a non-empty numeric vector.")
   }
 
+  # Convert verbose to integer
+  verbose_int <- as.integer(verbose)
+
   # Call the C function with PACKAGE specified
-    result <- tryCatch(
-      {
-        .Call(
-          "call_dynamic_inla_cgeneric",
-          as.integer(cmd),
-          as.numeric(theta),
-          cgeneric$data,
+  result <- tryCatch(
+    {
+      .Call(
+        "call_dynamic_inla_cgeneric",
+        as.integer(cmd),
+        as.numeric(theta),
+        cgeneric$data,
+        cgeneric$model,
+        cgeneric$shlib,
+        verbose_int
+      )
+    },
+    error = function(e) {
+      stop(
+        sprintf(
+          "Error calling function '%s' in shared library '%s': %s",
           cgeneric$model,
-          cgeneric$shlib
+          cgeneric$shlib,
+          e$message
         )
-      },
-      error = function(e) {
-        stop(
-          sprintf(
-            "Error calling function '%s' in shared library '%s': %s",
-            cgeneric$model,
-            cgeneric$shlib,
-            e$message
-          )
-        )
-      }
-    )
+      )
+    }
+  )
 
   return(result)
 }

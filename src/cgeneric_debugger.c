@@ -8,11 +8,11 @@
 #include <R_ext/Rdynload.h>
 
 // Function declaration
-SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_func_name, SEXP r_so_path);
+SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_func_name, SEXP r_so_path, SEXP r_verbose);
 
 // Function registration
 static const R_CallMethodDef CallEntries[] = {
-    {"call_dynamic_inla_cgeneric", (DL_FUNC) &call_dynamic_inla_cgeneric, 5},
+    {"call_dynamic_inla_cgeneric", (DL_FUNC) &call_dynamic_inla_cgeneric, 6},
     {NULL, NULL, 0}
 };
 
@@ -22,7 +22,11 @@ void R_init_inla_cgeneric_debugger(DllInfo *dll) {
     R_useDynamicSymbols(dll, TRUE); // Enable dynamic symbol lookup
     R_forceSymbols(dll, FALSE);     // Do not enforce exact symbol lookup
 }
-SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_func_name, SEXP r_so_path) {
+
+SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_func_name, SEXP r_so_path, SEXP r_verbose) {
+    // Parse verbose argument
+    int verbose = asInteger(r_verbose);
+
     // Validate inputs
     if (!isString(r_func_name) || LENGTH(r_func_name) != 1) {
         Rf_error("Function name must be a single string.");
@@ -51,7 +55,7 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
     // Parse cmd
     if (!isInteger(r_cmd)) Rf_error("Expected integer for 'cmd'.");
     int cmd = INTEGER(r_cmd)[0];
-    Rprintf("Received cmd = %d\n", cmd);
+    if (verbose) Rprintf("Received cmd = %d\n", cmd);
     if (cmd < INLA_CGENERIC_VOID || cmd > INLA_CGENERIC_QUIT) {
         dlclose(handle);
         Rf_error("Invalid cmd value: %d. Must be within enum inla_cgeneric_cmd_tp.", cmd);
@@ -62,14 +66,14 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
     if (!isReal(r_theta)) Rf_error("Expected numeric vector for 'theta'.");
     double *theta = REAL(r_theta);
     int theta_len = LENGTH(r_theta);
-    Rprintf("Received theta of length %d\n", theta_len);
+    if (verbose) Rprintf("Received theta of length %d\n", theta_len);
 
     inla_cgeneric_data_tp data = {0};
 
     // Parse integers
     SEXP r_ints = VECTOR_ELT(r_data, 0);
     data.n_ints = LENGTH(r_ints);
-    Rprintf("r_ints length: %d\n", data.n_ints);
+    if (verbose) Rprintf("r_ints length: %d\n", data.n_ints);
 
     if (data.n_ints > 0) {
         data.ints = Calloc(data.n_ints, inla_cgeneric_vec_tp *);
@@ -87,18 +91,20 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
             } else {
                 data.ints[i]->name = strdup("unnamed");
             }
-            Rprintf("ints[%d] (%s): ", i, data.ints[i]->name);
-            for (int j = 0; j < data.ints[i]->len; j++) {
-                Rprintf("%d ", data.ints[i]->ints[j]);
+            if (verbose) {
+                Rprintf("ints[%d] (%s): ", i, data.ints[i]->name);
+                for (int j = 0; j < data.ints[i]->len; j++) {
+                    Rprintf("%d ", data.ints[i]->ints[j]);
+                }
+                Rprintf("\n");
             }
-            Rprintf("\n");
         }
     }
 
     // Parse doubles
     SEXP r_doubles = VECTOR_ELT(r_data, 1);
     data.n_doubles = LENGTH(r_doubles);
-    Rprintf("r_doubles length: %d\n", data.n_doubles);
+    if (verbose) Rprintf("r_doubles length: %d\n", data.n_doubles);
 
     if (data.n_doubles > 0) {
         data.doubles = Calloc(data.n_doubles, inla_cgeneric_vec_tp *);
@@ -116,18 +122,20 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
             } else {
                 data.doubles[i]->name = strdup("unnamed");
             }
-            Rprintf("doubles[%d] (%s): ", i, data.doubles[i]->name);
-            for (int j = 0; j < data.doubles[i]->len; j++) {
-                Rprintf("%f ", data.doubles[i]->doubles[j]);
+            if (verbose) {
+                Rprintf("doubles[%d] (%s): ", i, data.doubles[i]->name);
+                for (int j = 0; j < data.doubles[i]->len; j++) {
+                    Rprintf("%f ", data.doubles[i]->doubles[j]);
+                }
+                Rprintf("\n");
             }
-            Rprintf("\n");
         }
     }
 
     // Parse character arrays
     SEXP r_chars = VECTOR_ELT(r_data, 2); // Assuming character arrays are in the third slot
     data.n_chars = LENGTH(r_chars);
-    Rprintf("r_chars length: %d\n", data.n_chars);
+    if (verbose) Rprintf("r_chars length: %d\n", data.n_chars);
 
     if (data.n_chars > 0) {
         data.chars = Calloc(data.n_chars, inla_cgeneric_vec_tp *);
@@ -150,17 +158,18 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
                 data.chars[i]->name = strdup("unnamed");
             }
 
-            // Print debug info
-            Rprintf("chars[%d] (%s): %s\n", i, data.chars[i]->name, data.chars[i]->chars);
+            if (verbose) {
+                Rprintf("chars[%d] (%s): %s\n", i, data.chars[i]->name, data.chars[i]->chars);
+            }
         }
     } else {
         data.chars = NULL; // No character arrays present
     }
 
-        // Parse dense matrices
+    // Parse dense matrices
     SEXP r_mats = VECTOR_ELT(r_data, 3);
     data.n_mats = LENGTH(r_mats);
-    Rprintf("r_mats length: %d\n", data.n_mats);
+    if (verbose) Rprintf("r_mats length: %d\n", data.n_mats);
 
     if (data.n_mats > 0) {
         data.mats = Calloc(data.n_mats, inla_cgeneric_mat_tp *);
@@ -195,12 +204,14 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
                 data.mats[i]->name = strdup("unnamed");
             }
 
-            Rprintf("mats[%d] (%s): nrow=%d, ncol=%d\n", i, data.mats[i]->name, data.mats[i]->nrow, data.mats[i]->ncol);
-            for (int j = 0; j < data.mats[i]->nrow * data.mats[i]->ncol && j < 10; j++) {
-                Rprintf("  x[%d] = %f\n", j, data.mats[i]->x[j]);
-            }
-            if (data.mats[i]->nrow * data.mats[i]->ncol > 10) {
-                Rprintf("  ... (only showing the first 10 elements)\n");
+            if (verbose) {
+                Rprintf("mats[%d] (%s): nrow=%d, ncol=%d\n", i, data.mats[i]->name, data.mats[i]->nrow, data.mats[i]->ncol);
+                for (int j = 0; j < data.mats[i]->nrow * data.mats[i]->ncol && j < 10; j++) {
+                    Rprintf("  x[%d] = %f\n", j, data.mats[i]->x[j]);
+                }
+                if (data.mats[i]->nrow * data.mats[i]->ncol > 10) {
+                    Rprintf("  ... (only showing the first 10 elements)\n");
+                }
             }
         }
     } else {
@@ -210,7 +221,7 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
     // Parse sparse matrices
     SEXP r_smats = VECTOR_ELT(r_data, 4);
     data.n_smats = LENGTH(r_smats);
-    Rprintf("r_smats length: %d\n", data.n_smats);
+    if (verbose) Rprintf("r_smats length: %d\n", data.n_smats);
 
     if (data.n_smats > 0) {
         data.smats = Calloc(data.n_smats, inla_cgeneric_smat_tp *);
@@ -260,19 +271,21 @@ SEXP call_dynamic_inla_cgeneric(SEXP r_cmd, SEXP r_theta, SEXP r_data, SEXP r_fu
                 data.smats[i]->name = strdup("unnamed");
             }
 
-            Rprintf("smats[%d] (%s): nrow=%d, ncol=%d, n=%d\n", i, data.smats[i]->name, data.smats[i]->nrow, data.smats[i]->ncol, data.smats[i]->n);
-            for (int j = 0; j < data.smats[i]->n && j < 10; j++) {
-                Rprintf("  i[%d] = %d, j[%d] = %d, x[%d] = %f\n", j, data.smats[i]->i[j], j, data.smats[i]->j[j], j, data.smats[i]->x[j]);
-            }
-            if (data.smats[i]->n > 10) {
-                Rprintf("  ... (only showing the first 10 entries)\n");
+            if (verbose) {
+                Rprintf("smats[%d] (%s): nrow=%d, ncol=%d, n=%d\n", i, data.smats[i]->name, data.smats[i]->nrow, data.smats[i]->ncol, data.smats[i]->n);
+                for (int j = 0; j < data.smats[i]->n && j < 10; j++) {
+                    Rprintf("  i[%d] = %d, j[%d] = %d, x[%d] = %f\n", j, data.smats[i]->i[j], j, data.smats[i]->j[j], j, data.smats[i]->x[j]);
+                }
+                if (data.smats[i]->n > 10) {
+                    Rprintf("  ... (only showing the first 10 entries)\n");
+                }
             }
         }
     } else {
         data.smats = NULL; // No sparse matrices present
     }
 
-    Rprintf("All data successfully parsed. Calling the dynamic function now...\n");
+    if (verbose) Rprintf("All data successfully parsed. Calling the dynamic function now...\n");
     
      // Define integer constants for commands
     #define CMD_Q 1
