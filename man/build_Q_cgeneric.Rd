@@ -12,7 +12,7 @@ build_Q_cgeneric(Q, graph)
 \item{graph}{Graph representation (row, column indices, and counts).}
 }
 \value{
-Dense matrix representation of the precision matrix.
+Matrix representation of the precision matrix.
 }
 \description{
 Converts a sparse representation of a precision matrix into a full dense matrix.

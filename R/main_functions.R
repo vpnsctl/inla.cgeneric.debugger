@@ -156,7 +156,7 @@ call_dynamic_cgeneric_model <- function(model, cmd, theta, verbose = FALSE) {
 #' @description Converts a sparse representation of a precision matrix into a full dense matrix.
 #' @param Q Vector containing non-zero entries of the precision matrix.
 #' @param graph Graph representation (row, column indices, and counts).
-#' @return Dense matrix representation of the precision matrix.
+#' @return Matrix representation of the precision matrix.
 #' @export
 build_Q_cgeneric <- function(Q, graph) {
   # Extract nrow (and ncol, since it's square) from the first element of graph
